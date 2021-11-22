@@ -8,11 +8,10 @@ from lava.magma.compiler.channels.interfaces import AbstractCspPort
 
 class AbstractPortImplementation(ABC):
     def __init__(
-        self,
-        process_model: "AbstractProcessModel",  # noqa: F821
-        shape: ty.Tuple[int, ...] = tuple(),
-        d_type: type = int,
-    ):
+            self,
+            process_model: "AbstractProcessModel",  # noqa: F821
+            shape: ty.Tuple[int, ...] = tuple(),
+            d_type: type = int):
         self._process_model = process_model
         self._shape = shape
         self._d_type = d_type

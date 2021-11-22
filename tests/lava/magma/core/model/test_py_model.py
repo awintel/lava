@@ -51,7 +51,7 @@ class ProcModel(AbstractPyProcessModel):
     v4_tensor = LavaPyType(np.ndarray, np.int32, 6)
     out_port: PyOutPort = LavaPyType(PyOutPort.VEC_DENSE, int, 8)
 
-    def run(self):
+    def _run(self):
         """Every PyProcModel must implement a run(..) method. Here we perform
         just some fake computation to demonstrate initialized Vars can be used.
         """
@@ -146,7 +146,7 @@ class TestPyProcessBuilder(unittest.TestCase):
     def test_constructor(self):
         """Checks PyProcessBuilder can be constructed."""
 
-        b = PyProcessBuilder(ProcModel, 0)
+        b = PyProcessBuilder('', ProcModel, 0)
 
         self.assertIsInstance(b, PyProcessBuilder)
 
@@ -154,7 +154,7 @@ class TestPyProcessBuilder(unittest.TestCase):
         """Check variables and ports can be set."""
 
         # Create a new ProcBuilder
-        b = PyProcessBuilder(ProcModel, 0)
+        b = PyProcessBuilder('', ProcModel, 0)
 
         # Create Process for which we want to build PyProcModel
         proc = Proc()
@@ -201,7 +201,7 @@ class TestPyProcessBuilder(unittest.TestCase):
         apply for Ports"""
 
         # Lets create a ProcBuilder and Proc
-        b = PyProcessBuilder(ProcModel, 0)
+        b = PyProcessBuilder('', ProcModel, 0)
         proc = Proc()
 
         # Also generate list of VarInitializers from lava.proc Vars...
@@ -219,7 +219,7 @@ class TestPyProcessBuilder(unittest.TestCase):
         be set."""
 
         # Lets create a ProcBuilder and Proc with Var- and PortInitializers
-        b = PyProcessBuilder(ProcModel, 0)
+        b = PyProcessBuilder('', ProcModel, 0)
         proc = Proc()
         v = [VarInitializer(v.name, v.shape, v.init, v.id) for v in proc.vars]
         ports = list(proc.in_ports) + list(proc.out_ports)
@@ -260,14 +260,14 @@ class TestPyProcessBuilder(unittest.TestCase):
         pi = PortInitializer("port", (1,), np.intc, "InPort", 32)
 
         # Create PortInitializer for correct LavaPyType(PyInPort.VEC_DENSE, int)
-        b = PyProcessBuilder(ProcModelForLavaPyType0, 0)
+        b = PyProcessBuilder('', ProcModelForLavaPyType0, 0)
         b.set_py_ports([pi])
 
         # This one is legal
         b.check_lava_py_types()
 
         # Create PortInitializer for wrong LavaPyType(123, int)
-        b = PyProcessBuilder(ProcModelForLavaPyType1, 1)
+        b = PyProcessBuilder('', ProcModelForLavaPyType1, 1)
         b.set_py_ports([pi])
 
         # This one fails because '123' is not a type
@@ -275,7 +275,7 @@ class TestPyProcessBuilder(unittest.TestCase):
             b.check_lava_py_types()
 
         # Create PortInitializer for wrong LavaPyType(PyInPort, int)
-        b = PyProcessBuilder(ProcModelForLavaPyType2, 2)
+        b = PyProcessBuilder('', ProcModelForLavaPyType2, 2)
         b.set_py_ports([pi])
 
         # This one fails because 'PyInPort' is not a strict subtype of
@@ -284,7 +284,7 @@ class TestPyProcessBuilder(unittest.TestCase):
             b.check_lava_py_types()
 
         # Create PortInitializer for wrong LavaPyType(PyOutPort, int)
-        b = PyProcessBuilder(ProcModelForLavaPyType3, 3)
+        b = PyProcessBuilder('', ProcModelForLavaPyType3, 3)
         b.set_py_ports([pi])
 
         # This one fails because 'PyOutPort' is not a strict sub-type at all
@@ -297,7 +297,7 @@ class TestPyProcessBuilder(unittest.TestCase):
 
         # Lets create a ProcBuilder and Proc with Var- and PortInitializers
         # and fake CspPorts so ProcModel can be built
-        b = PyProcessBuilder(ProcModel, 0)
+        b = PyProcessBuilder('', ProcModel, 0)
 
         proc = Proc()
         v = [VarInitializer(v.name, v.shape, v.init, v.id) for v in proc.vars]
@@ -365,7 +365,7 @@ class TestPyProcessBuilder(unittest.TestCase):
 
         # Just to make sure the generated Vars are really usable, we can call
         # the run(..) method:
-        self.assertEqual(pm.run(), 1)
+        self.assertEqual(pm._run(), 1)
 
     def test_build_with_dangling_ports(self):
         """Checks that not all ports must be connected, i.e. ports can be
@@ -391,7 +391,7 @@ class TestPyProcessBuilder(unittest.TestCase):
         for py_port in list(proc_with_no_out_ports.in_ports):
             csp_ports.append(FakeCspPort(py_port.name))
 
-        b_with_no_out_ports = PyProcessBuilder(ProcModel, 0)
+        b_with_no_out_ports = PyProcessBuilder('', ProcModel, 0)
         b_with_no_out_ports.set_variables(v)
         b_with_no_out_ports.set_py_ports(py_ports)
         b_with_no_out_ports.set_csp_ports(csp_ports)
@@ -416,7 +416,7 @@ class TestPyProcessBuilder(unittest.TestCase):
         for py_port in list(proc_with_no_in_ports.out_ports):
             csp_ports.append(FakeCspPort(py_port.name))
 
-        b_with_no_in_ports = PyProcessBuilder(ProcModel, 0)
+        b_with_no_in_ports = PyProcessBuilder('', ProcModel, 0)
         b_with_no_in_ports.set_variables(v)
         b_with_no_in_ports.set_py_ports(py_ports)
         b_with_no_in_ports.set_csp_ports(csp_ports)
@@ -445,7 +445,7 @@ class TestPyProcessBuilder(unittest.TestCase):
         """Check RefPorts and VarPorts can be set."""
 
         # Create a new ProcBuilder
-        b = PyProcessBuilder(PyProcModelRefVar, 0)
+        b = PyProcessBuilder('', PyProcModelRefVar, 0)
 
         # Create Process for which we want to build PyProcModel
         proc = ProcRefVar()

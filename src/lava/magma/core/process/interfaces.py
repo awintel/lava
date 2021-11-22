@@ -53,6 +53,12 @@ class AbstractProcessMember(ABC):
             raise AssertionError("Not a process!")
         self._process = val
 
+    def __repr__(self):
+        return (
+            f"{self.__class__.__qualname__}: {self.name}"
+            + f"\n    process: {self.process.name if self.process else 'N/A'}"
+            + f"\n    shape: {self.shape}"
+        )
 
 class IdGeneratorSingleton(ABC):
     """A singleton class that generates globally unique ids to distinguish

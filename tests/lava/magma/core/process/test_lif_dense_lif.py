@@ -27,11 +27,19 @@ class SimpleRunConfig(RunConfig):
 
 class TestLifDenseLif(unittest.TestCase):
     def test_lif_dense_lif(self):
-        self.lif1 = LIF()
-        self.dense = Dense()
-        self.lif2 = LIF()
+        """Crude test to check execution of PyProcModels and message
+        transmission via PyPorts."""
+        self.lif1 = LIF(b=4)
+        self.dense = Dense(weights=2)
+        self.lif2 = LIF(b=4, du=1, vth=1000)
         self.lif1.out_ports.s_out.connect(self.dense.in_ports.s_in)
         self.dense.out_ports.a_out.connect(self.lif2.in_ports.a_in)
-        self.lif1.run(condition=RunSteps(num_steps=10),
+        self.lif1.run(condition=RunSteps(num_steps=3),
                       run_cfg=SimpleRunConfig(sync_domains=[]))
+        v1 = self.lif1.v.get()[0]
+        v2 = self.lif2.v.get()[0]
         self.lif1.stop()
+        # lif1 accumulated 4 three times and gets reset to 0
+        self.assertEqual(v1, 0)
+        # lif2 accumulated 4 three times (=12) and receives one spike of 2 (=14)
+        self.assertEqual(v2, 14)

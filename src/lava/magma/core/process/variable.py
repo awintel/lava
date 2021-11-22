@@ -131,13 +131,12 @@ class Var(AbstractProcessMember):
             else:
                 return self.init
 
-    def __repr__(self):
+    def __repr__(self) -> str:
+        rep = super().__repr__()
         return (
-            "Variable: {}".format(self.name)
-            + "\n    shape: {}".format(self.shape)
-            + "\n    init: {}".format(self.init)
-            + "\n    shareable: {}".format(self.shareable)
-            + "\n    value: {}".format(self.get())
+            rep
+            + f"\n    shareable: {self.shareable}"
+            + f"\n    value: {self.get()}"
         )
 
 

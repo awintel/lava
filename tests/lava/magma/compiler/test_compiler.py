@@ -374,14 +374,14 @@ class TestCompiler(unittest.TestCase):
 
         # p1::ProcA and p3::ProcA have been expanded to ProcB and ProcC while
         # ProcB and ProcC have been mapped to their corresponding PyProcModels
-        self.assertFalse(p1.procs.is_empty())
+        self.assertFalse(p1.procs.is_empty)
         self.assertEqual(proc_map[p1.procs.proc1], PyProcModelB)
         self.assertEqual(proc_map[p1.procs.proc2], PyProcModelC)
 
-        self.assertTrue(p2.procs.is_empty())
+        self.assertTrue(p2.procs.is_empty)
         self.assertEqual(proc_map[p2], PyProcModelB)
 
-        self.assertFalse(p3.procs.is_empty())
+        self.assertFalse(p3.procs.is_empty)
         self.assertEqual(proc_map[p3.procs.proc1], PyProcModelB)
         self.assertEqual(proc_map[p3.procs.proc2], PyProcModelC)
 

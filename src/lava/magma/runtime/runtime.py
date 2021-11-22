@@ -229,7 +229,11 @@ class Runtime:
                         data = recv_port.recv()
                         if not np.array_equal(data, MGMT_RESPONSE.DONE):
                             raise RuntimeError(f"Runtime Received {data}")
+                # ToDo: (AW) Why repeat?
                 if run_condition.blocking:
+                    # FixMe: The Runtime must not be aware of time steps
+                    #  because not every ProcessModel or RunCondition will
+                    #  have a notion of discrete time steps
                     self.current_ts += self.num_steps
                     self._is_running = False
             elif isinstance(run_condition, RunContinuous):
@@ -250,7 +254,14 @@ class Runtime:
             self._is_running = False
 
     def pause(self):
-        raise NotImplementedError
+        if self._is_running:
+            for send_port in self.runtime_to_service_cmd:
+                send_port.send(MGMT_COMMAND.PAUSE)
+            for recv_port in self.service_to_runtime_ack:
+                data = recv_port.recv()
+                if not np.array_equal(data, MGMT_RESPONSE.PAUSED):
+                    raise RuntimeError(f"Runtime Received {data}")
+            self._is_running = False
 
     def stop(self):
         """Stops an ongoing or paused run."""
@@ -290,78 +301,83 @@ class Runtime:
 
     def set_var(self, var_id: int, value: np.ndarray, idx: np.ndarray = None):
         """Sets value of a variable with id 'var_id'."""
+
+        assert self._is_started, "Runtime has not been started yet."
+        assert not self._is_running, \
+            "Setting Vars while running is currently not supported."
+
         node_config: NodeConfig = self._executable.node_configs[0]
         ev: AbstractExecVar = node_config.exec_vars[var_id]
         runtime_srv_id: int = ev.runtime_srv_id
         model_id: int = ev.process.id
 
-        if issubclass(list(self._executable.rs_builders.values())
-                      [runtime_srv_id].rs_class, AsyncPyRuntimeService):
-            raise RuntimeError("Set is not supported in AsyncPyRuntimeService")
+        #if issubclass(list(self._executable.rs_builders.values())
+        #              [runtime_srv_id].rs_class, AsyncPyRuntimeService):
+        #    raise RuntimeError("Set is not supported in AsyncPyRuntimeService")
 
-        if self._is_started:
-            # Send a msg to runtime service given the rs_id that you need value
-            # from a model with model_id and var with var_id
+        # Send a msg to runtime service given the rs_id that you need value
+        # from a model with model_id and var with var_id
 
-            # 1. Send SET Command
-            req_port: CspSendPort = self.runtime_to_service_req[runtime_srv_id]
-            req_port.send(REQ_TYPE.SET)
-            req_port.send(enum_to_np(model_id))
-            req_port.send(enum_to_np(var_id))
+        # 1. Send SET Command
+        req_port: CspSendPort = self.runtime_to_service_req[runtime_srv_id]
+        req_port.send(REQ_TYPE.SET)
+        req_port.send(enum_to_np(model_id))
+        req_port.send(enum_to_np(var_id))
 
-            # 2. Reshape the data
-            buffer: np.ndarray = value
-            if idx:
-                buffer = buffer[idx]
-            buffer_shape: ty.Tuple[int, ...] = buffer.shape
-            num_items: int = np.prod(buffer_shape).item()
-            buffer = buffer.reshape((1, num_items))
+        # 2. Reshape the data
+        buffer: np.ndarray = value
+        if idx:
+            buffer = buffer[idx]
+        buffer_shape: ty.Tuple[int, ...] = buffer.shape
+        num_items: int = np.prod(buffer_shape).item()
+        buffer = buffer.reshape((1, num_items))
 
-            # 3. Send [NUM_ITEMS, DATA1, DATA2, ...]
-            data_port: CspSendPort = self.runtime_to_service_data[
-                runtime_srv_id]
-            data_port.send(enum_to_np(num_items))
-            for i in range(num_items):
-                data_port.send(enum_to_np(buffer[0, i], np.float64))
-        else:
-            raise RuntimeError("Runtime has not started")
+        # 3. Send [NUM_ITEMS, DATA1, DATA2, ...]
+        data_port: CspSendPort = self.runtime_to_service_data[
+            runtime_srv_id]
+        data_port.send(enum_to_np(num_items))
+        for i in range(num_items):
+            data_port.send(enum_to_np(buffer[0, i], np.float64))
 
     def get_var(self, var_id: int, idx: np.ndarray = None) -> np.ndarray:
         """Gets value of a variable with id 'var_id'."""
+
+        assert self._is_started, "Runtime has not been started yet."
+        assert not self._is_running, \
+            "Getting Vars while running is currently not supported."
+
         node_config: NodeConfig = self._executable.node_configs[0]
         ev: AbstractExecVar = node_config.exec_vars[var_id]
         runtime_srv_id: int = ev.runtime_srv_id
         model_id: int = ev.process.id
 
-        rs_builders = list(self._executable.rs_builders.values())
-        rs_class = [rs for rs in rs_builders
-                    if rs.runtime_service_id == runtime_srv_id][0].rs_class
-        if issubclass(rs_class, AsyncPyRuntimeService):
-            raise RuntimeError("Get is not supported in AsyncPyRuntimeService")
+        # ToDo: (AW) Eliminate dead code if truly not needed anymore
+        #rs_builders = list(self._executable.rs_builders.values())
+        #rs_class = [rs for rs in rs_builders
+        #            if rs.runtime_service_id == runtime_srv_id][0].rs_class
+        #if issubclass(rs_class, AsyncPyRuntimeService):
+        #    raise RuntimeError("Get is not supported in AsyncPyRuntimeService")
 
-        if self._is_started:
-            # Send a msg to runtime service given the rs_id that you need value
-            # from a model with model_id and var with var_id
+        # Send a msg to runtime service given the rs_id that you need value
+        # from a model with model_id and var with var_id
 
-            # 1. Send GET Command
-            req_port: CspSendPort = self.runtime_to_service_req[runtime_srv_id]
-            req_port.send(REQ_TYPE.GET)
-            req_port.send(enum_to_np(model_id))
-            req_port.send(enum_to_np(var_id))
+        # 1. Send GET Command
+        req_port: CspSendPort = self.runtime_to_service_req[runtime_srv_id]
+        req_port.send(REQ_TYPE.GET)
+        req_port.send(enum_to_np(model_id))
+        req_port.send(enum_to_np(var_id))
 
-            # 2. Receive Data [NUM_ITEMS, DATA1, DATA2, ...]
-            data_port: CspRecvPort = self.service_to_runtime_data[
-                runtime_srv_id]
-            num_items: int = int(data_port.recv()[0].item())
-            buffer: np.ndarray = np.empty((1, num_items))
-            for i in range(num_items):
-                buffer[0, i] = data_port.recv()[0]
+        # 2. Receive Data [NUM_ITEMS, DATA1, DATA2, ...]
+        data_port: CspRecvPort = self.service_to_runtime_data[
+            runtime_srv_id]
+        num_items: int = int(data_port.recv()[0].item())
+        buffer: np.ndarray = np.empty((1, num_items))
+        for i in range(num_items):
+            buffer[0, i] = data_port.recv()[0]
 
-            # 3. Reshape result and return
-            buffer = buffer.reshape(ev.shape)
-            if idx:
-                return buffer[idx]
-            else:
-                return buffer
+        # 3. Reshape result and return
+        buffer = buffer.reshape(ev.shape)
+        if idx:
+            return buffer[idx]
         else:
-            raise RuntimeError("Runtime has not started")
+            return buffer

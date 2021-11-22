@@ -38,7 +38,7 @@ class SimpleProcess(AbstractProcess):
 
 @implements(proc=SimpleProcess, protocol=SimpleSyncProtocol)
 class SimpleProcessModel(AbstractPyProcessModel):
-    def run(self):
+    def _run(self):
         pass
 
 
@@ -64,7 +64,7 @@ class TestRuntimeService(unittest.TestCase):
         self.assertEqual(rs.process_to_service_data, [])
 
     def test_runtime_service_start_run(self):
-        pm = SimpleProcessModel()
+        pm = SimpleProcessModel(model_id=0, name='')
         sp = SimpleSyncProtocol()
         rs = SimplePyRuntimeService(protocol=sp)
         smm = SharedMemoryManager()

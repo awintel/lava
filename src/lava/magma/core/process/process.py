@@ -46,6 +46,11 @@ class Collection:
         """Returns the members of the Collection."""
         return list(self._members.values())
 
+    @property
+    def is_empty(self) -> bool:
+        """Returns True if Collection has no members."""
+        return len(self.members) == 0
+
     def add_members(self, members: ty.Dict[str, mem_type]):
         """Adds members to Collection.
 
@@ -56,10 +61,6 @@ class Collection:
         self._members.update(members)
         for key, mem in members.items():
             setattr(self, key, mem)
-
-    def is_empty(self) -> bool:
-        """Returns True if Collection has no members."""
-        return len(self.members) == 0
 
     def has(self, obj) -> bool:
         """Returns True if member is in collection."""
@@ -91,8 +92,7 @@ class Collection:
 
 class ProcessPostInitCaller(type):
     """Metaclass for AbstractProcess that overwrites __call__() in order to
-    call _post_init() initializer method after __init__() of any sub class
-    is called."""
+    call _post_init() after __init__() of any sub class."""
 
     def __call__(cls, *args, **kwargs):
         obj = type.__call__(cls, *args, **kwargs)
@@ -100,8 +100,8 @@ class ProcessPostInitCaller(type):
         return obj
 
 
-# ToDo: AbstractProcess should inherit from ABC but that throws an error when
-#  metaclass is assigned!
+# ToDo: (AW) AbstractProcess should inherit from ABC but that throws an error
+#  when metaclass is assigned! Why is that?
 class AbstractProcess(metaclass=ProcessPostInitCaller):
     """The notion of a process is inspired by the Communicating Sequential
     Process paradigm for distributed, parallel and asynchronous programming.
@@ -249,10 +249,10 @@ class AbstractProcess(metaclass=ProcessPostInitCaller):
         # Current runtime environment
         self._runtime: ty.Optional[Runtime] = None
 
+    # FixMe: (AW) Something is not working. This never gets called!
     def __del__(self):
-        """On destruction, terminate Runtime automatically to
-        free compute resources.
-        """
+        """On destruction, terminate Runtime automatically to free compute
+        resources."""
         self.stop()
 
     def _post_init(self):
@@ -298,12 +298,12 @@ class AbstractProcess(metaclass=ProcessPostInitCaller):
             attr.process = self
 
     @property
-    def is_compiled(self):
+    def is_compiled(self) -> bool:
         """Returns True if process has been compiled."""
         return self._is_compiled
 
     @property
-    def runtime(self):
+    def runtime(self) -> Runtime:
         """Returns current Runtime or None if no Runtime exists."""
         return self._runtime
 
@@ -321,7 +321,7 @@ class AbstractProcess(metaclass=ProcessPostInitCaller):
         for v in self.vars:
             v.validate_alias()
 
-    def is_sub_proc_of(self, proc: 'AbstractProcess'):
+    def is_sub_proc_of(self, proc: 'AbstractProcess') -> bool:
         """Returns True, is this Process is a sub process of 'proc'."""
         if self.parent_proc is not None:
             if self.parent_proc == proc:
@@ -355,8 +355,6 @@ class AbstractProcess(metaclass=ProcessPostInitCaller):
         """Loads and de-serializes Process from disk."""
         pass
 
-    # TODO: (PP) Remove  if condition on blocking as soon as non-blocking
-    #  execution is completely implemented
     def run(self, condition: AbstractRunCondition, run_cfg: RunConfig):
         """Runs process given RunConfig and RunCondition.
 
@@ -385,10 +383,8 @@ class AbstractProcess(metaclass=ProcessPostInitCaller):
             ProcessModel for each compiled process.
         """
 
-        if not condition.blocking:
-            # Currently non-blocking execution is not implemented
-            raise NotImplementedError("Non-blocking Execution is currently not"
-                                      " supported. Please use blocking=True.")
+        assert not self._runtime, \
+            "Resuming a paused Process is not yet supported."
 
         if not self._runtime:
             executable = self.compile(run_cfg)
@@ -402,12 +398,14 @@ class AbstractProcess(metaclass=ProcessPostInitCaller):
     def wait(self):
         """Waits until end of process execution or for as long as
         RunCondition is met by blocking execution at command line level."""
-        if not self.runtime:
-            self.runtime.wait()
+        raise NotImplementedError("wait() is not yet supported.")
+        # if self.runtime:
+        #     self.runtime.wait()
 
     def pause(self):
         """Pauses process execution while running in non-blocking mode."""
-        if not self.runtime:
+        #raise NotImplementedError("pause() not yet supported.")
+        if self.runtime:
             self.runtime.pause()
 
     def stop(self):
@@ -415,6 +413,24 @@ class AbstractProcess(metaclass=ProcessPostInitCaller):
         nodes."""
         if self.runtime:
             self.runtime.stop()
+
+    def __repr__(self) -> str:
+        parent_name = self.parent_proc.name if self.parent_proc else "N/A"
+        model_name = self._model.__qualname__ if self._model else "N/A"
+        return (
+            f"Process::{self.__class__.__name__}"
+            + f"\n    name: {self.name}"
+            + f"\n    id: {self.id}"
+            + f"\n    parent_proc: {parent_name}"
+            + f"\n    proc_model: {model_name}"
+            + f"\n    is_compiled: {self.is_compiled}"
+            + f"\n    in_ports: {self.in_ports.member_names}"
+            + f"\n    out_ports: {self.out_ports.member_names}"
+            + f"\n    ref_ports: {self.ref_ports.member_names}"
+            + f"\n    var_ports: {self.var_ports.member_names}"
+            + f"\n    vars: {self.vars.member_names}"
+            + f"\n    sub_procs: {self.procs.member_names}"
+        )
 
 
 class ProcessServer(IdGeneratorSingleton):

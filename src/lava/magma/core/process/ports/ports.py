@@ -1,5 +1,6 @@
 # Copyright (C) 2021 Intel Corporation
-# SPDX-License-Identifier:  BSD-3-Clause
+# SPDX-License-Identifier: BSD-3-Clause
+# See: https://spdx.org/licenses/
 import typing as ty
 from abc import ABC, abstractmethod
 import math
@@ -46,12 +47,11 @@ class AbstractPort(AbstractProcessMember):
         self.out_connections: ty.List[AbstractPort] = []
 
     def _validate_ports(
-        self,
-        ports: ty.List["AbstractPort"],
-        port_type: ty.Type["AbstractPort"],
-        assert_same_shape: bool = True,
-        assert_same_type: bool = False,
-    ):
+            self,
+            ports: ty.List["AbstractPort"],
+            port_type: ty.Type["AbstractPort"],
+            assert_same_shape: bool = True,
+            assert_same_type: bool = False):
         """Checks that each port in 'ports' is of type 'port_type' and that
         shapes of each port is identical to this port's shape."""
         cls_name = port_type.__name__
@@ -87,12 +87,11 @@ class AbstractPort(AbstractProcessMember):
         self.out_connections += outputs
 
     def _connect_forward(
-        self,
-        ports: ty.List["AbstractPort"],
-        port_type: ty.Type["AbstractPort"],
-        assert_same_shape: bool = True,
-        assert_same_type: bool = True,
-    ):
+            self,
+            ports: ty.List["AbstractPort"],
+            port_type: ty.Type["AbstractPort"],
+            assert_same_shape: bool = True,
+            assert_same_type: bool = True):
         """Creates a forward connection from this AbstractPort to other
         ports by adding other ports to this AbstractPort's out_connection and
         by adding this AbstractIOPort to other port's in_connections."""
@@ -107,12 +106,11 @@ class AbstractPort(AbstractProcessMember):
             p._add_inputs([self])
 
     def _connect_backward(
-        self,
-        ports: ty.List["AbstractPort"],
-        port_type: ty.Type["AbstractPort"],
-        assert_same_shape: bool = True,
-        assert_same_type: bool = True,
-    ):
+            self,
+            ports: ty.List["AbstractPort"],
+            port_type: ty.Type["AbstractPort"],
+            assert_same_shape: bool = True,
+            assert_same_type: bool = True):
         """Creates a backward connection from other ports to this
         AbstractPort by adding other ports to this AbstractPort's
         in_connection and by adding this AbstractPort to other port's
@@ -181,10 +179,9 @@ class AbstractPort(AbstractProcessMember):
         return self.reshape((self.size,))
 
     def concat_with(
-        self,
-        ports: ty.Union["AbstractPort", ty.List["AbstractPort"]],
-        axis: int,
-    ) -> "ConcatPort":
+            self,
+            ports: ty.Union["AbstractPort", ty.List["AbstractPort"]],
+            axis: int) -> "ConcatPort":
         """Concatenates this port with other ports in given order along given
         axis by deriving and returning a new virtual ConcatPort. This implies
         resulting ConcatPort can only be forward connected to another port.
@@ -203,6 +200,16 @@ class AbstractPort(AbstractProcessMember):
             port_type = AbstractRVPort
         self._validate_ports(ports, port_type, assert_same_shape=False)
         return ConcatPort(ports, axis)
+
+    def __repr__(self):
+        rep = super().__repr__()
+        in_conns = [f"{p.name}({p._process.name})" for p in self.in_connections]
+        out_conns = [f"{p.name}({p._process.name})" for p in self.out_connections]
+        return (
+            rep
+            + f"\n    in_connections: {in_conns}"
+            + f"\n    out_connections: {out_conns}"
+        )
 
 
 class AbstractIOPort(AbstractPort):
@@ -254,8 +261,7 @@ class OutPort(AbstractIOPort, AbstractSrcPort):
     """
 
     def connect(
-        self, ports: ty.Union["AbstractIOPort", ty.List["AbstractIOPort"]]
-    ):
+            self, ports: ty.Union["AbstractIOPort", ty.List["AbstractIOPort"]]):
         """Connects this OutPort to other InPort(s) of another process
         or to OutPort(s) of its parent process.
 
@@ -287,10 +293,9 @@ class InPort(AbstractIOPort, AbstractDstPort):
     """
 
     def __init__(
-        self,
-        shape: ty.Tuple,
-        reduce_op: ty.Optional[ty.Type[AbstractReduceOp]] = None,
-    ):
+            self,
+            shape: ty.Tuple,
+            reduce_op: ty.Optional[ty.Type[AbstractReduceOp]] = None):
         super().__init__(shape)
         self._reduce_op = reduce_op
 
@@ -305,8 +310,7 @@ class InPort(AbstractIOPort, AbstractDstPort):
         self._connect_forward(to_list(ports), InPort)
 
     def connect_from(
-        self, ports: ty.Union["AbstractIOPort", ty.List["AbstractIOPort"]]
-    ):
+            self, ports: ty.Union["AbstractIOPort", ty.List["AbstractIOPort"]]):
         """Connects other OutPort(s) to this InPort or connects other
         InPort(s) of parent process to this InPort.
 
@@ -338,8 +342,7 @@ class RefPort(AbstractRVPort, AbstractSrcPort):
     RefPort to a Var via the connect_var(..) method."""
 
     def connect(
-        self, ports: ty.Union["AbstractRVPort", ty.List["AbstractRVPort"]]
-    ):
+            self, ports: ty.Union["AbstractRVPort", ty.List["AbstractRVPort"]]):
         """Connects this RefPort to other VarPort(s) of another process
         or to RefPort(s) of its parent process.
 
@@ -472,8 +475,7 @@ class VarPort(AbstractRVPort, AbstractDstPort):
         self._connect_forward(to_list(ports), VarPort)
 
     def connect_from(
-        self, ports: ty.Union["AbstractRVPort", ty.List["AbstractRVPort"]]
-    ):
+            self, ports: ty.Union["AbstractRVPort", ty.List["AbstractRVPort"]]):
         """Connects other RefPort(s) to this VarPort or connects other
         VarPort(s) of parent process to this VarPort.
 
@@ -490,6 +492,13 @@ class VarPort(AbstractRVPort, AbstractDstPort):
                         p.process.__class__.__name__, p.name))
         self._connect_backward(to_list(ports), AbstractRVPort)
 
+    def __repr__(self):
+        rep = super().__repr__()
+        var = f"{self.var.name}({self.process.name})" if self.var else "N/A"
+        return (
+            rep
+            + f"\n    var: {var}"
+        )
 
 class ImplicitVarPort(VarPort):
     """Sub class for VarPort to identify implicitly created VarPorts when
@@ -627,10 +636,12 @@ class ConcatPort(AbstractPort, AbstractVirtualPort):
         self._connect_forward(to_list(ports), port_type)
 
 
-# ToDo: TBD...
+# ToDo: (AW) TBD...
 class PermutePort(AbstractPort, AbstractVirtualPort):
     """A PermutePort is a virtual port that allows to permute the dimensions
-    of a port before connecting to another port.
+    of a port before connecting to another port. Permutations refers to the
+    change of order of the different tensor dimensions. A special case of
+    permutation is transposition in 2D.
     It is used by the compiler to map the indices of the underlying
     tensor-valued data array from the derived to the new shape.
 
@@ -639,14 +650,15 @@ class PermutePort(AbstractPort, AbstractVirtualPort):
         in_port = InPort((3, 2, 4))
         out_port.permute([3, 1, 2]).connect(in_port)
     """
-
     pass
 
 
-# ToDo: TBD...
+# ToDo: (AW) TBD...
 class ReIndexPort(AbstractPort, AbstractVirtualPort):
     """A ReIndexPort is a virtual port that allows to re-index the elements
-    of a port before connecting to another port.
+    of a port before connecting to another port. Re-indexing refers to a
+    re-arrangement of the elements in a tensor without changing the shape of
+    the tensor.
     It is used by the compiler to map the indices of the underlying
     tensor-valued data array from the derived to the new shape.
 
@@ -655,5 +667,4 @@ class ReIndexPort(AbstractPort, AbstractVirtualPort):
         in_port = InPort((2, 2))
         out_port.reindex([3, 1, 0, 2]).connect(in_port)
     """
-
     pass

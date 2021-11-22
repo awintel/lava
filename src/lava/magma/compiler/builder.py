@@ -87,10 +87,14 @@ class PyProcessBuilder(AbstractProcessBuilder):
     """
 
     def __init__(
-        self, proc_model: ty.Type[AbstractPyProcessModel], model_id: int
-    ):
+            self,
+            name: str,
+            proc_model: ty.Type[AbstractPyProcessModel],
+            model_id: int):
+        assert isinstance(name, str), "'name' must be a string."
         if not issubclass(proc_model, AbstractPyProcessModel):
             raise AssertionError("Is not a subclass of AbstractPyProcessModel")
+        self._name = name
         self._proc_model = proc_model
         self._model_id = model_id
         self.vars: ty.Dict[str, VarInitializer] = {}
@@ -352,8 +356,7 @@ class PyProcessBuilder(AbstractProcessBuilder):
         """
 
         # Create the ProcessModel
-        pm = self.proc_model()
-        pm.model_id = self._model_id
+        pm = self.proc_model(self._model_id, self._name)
 
         # Initialize PyPorts
         for name, p in self.py_ports.items():

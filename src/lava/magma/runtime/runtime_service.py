@@ -11,8 +11,7 @@ from lava.magma.core.sync.protocol import AbstractSyncProtocol
 from lava.magma.runtime.mgmt_token_enums import (
     MGMT_RESPONSE,
     MGMT_COMMAND,
-    enum_to_np, REQ_TYPE,
-)
+    enum_to_np, REQ_TYPE)
 
 
 class AbstractRuntimeService(ABC):
@@ -171,6 +170,47 @@ class LoihiPyRuntimeService(PyRuntimeService):
         ack_relay_port = self.service_to_runtime_ack
         ack_relay_port.send(ack_recv_port.recv())
 
+    # ToDo: (AW) To be cleaned up
+    def _handle_get_set(self, phase):
+        #if np.array_equal(phase, LoihiPyRuntimeService.Phase.HOST):
+        while True:
+            if self.runtime_to_service_req.probe():
+                request = self.runtime_to_service_req.recv()
+                if np.array_equal(request, REQ_TYPE.GET):
+                    requests: ty.List[np.ndarray] = [request]
+                    # recv model_id
+                    model_id: int = \
+                        self.runtime_to_service_req.recv()[
+                            0].item()
+                    # recv var_id
+                    requests.append(
+                        self.runtime_to_service_req.recv())
+                    self._send_pm_req_given_model_id(model_id,
+                                                     *requests)
+
+                    self._relay_to_runtime_data_given_model_id(
+                        model_id)
+                elif np.array_equal(request, REQ_TYPE.SET):
+                    requests: ty.List[np.ndarray] = [request]
+                    # recv model_id
+                    model_id: int = \
+                        self.runtime_to_service_req.recv()[
+                            0].item()
+                    # recv var_id
+                    requests.append(
+                        self.runtime_to_service_req.recv())
+                    self._send_pm_req_given_model_id(model_id,
+                                                     *requests)
+
+                    self._relay_to_pm_data_given_model_id(
+                        model_id)
+                else:
+                    raise RuntimeError(
+                        f"Unknown request {request}")
+
+            if self.runtime_to_service_cmd.probe():
+                return
+
     def run(self):
         """Retrieves commands from the runtime. On STOP or PAUSE commands all
         ProcessModels are notified and expected to TERMINATE or PAUSE,
@@ -241,53 +281,13 @@ class LoihiPyRuntimeService(PyRuntimeService):
             # Handle get/set Var
             self._handle_get_set(phase)
 
-    def _handle_get_set(self, phase):
-        if np.array_equal(phase, LoihiPyRuntimeService.Phase.HOST):
-            while True:
-                if self.runtime_to_service_req.probe():
-                    request = self.runtime_to_service_req.recv()
-                    if np.array_equal(request, REQ_TYPE.GET):
-                        requests: ty.List[np.ndarray] = [request]
-                        # recv model_id
-                        model_id: int = \
-                            self.runtime_to_service_req.recv()[
-                                0].item()
-                        # recv var_id
-                        requests.append(
-                            self.runtime_to_service_req.recv())
-                        self._send_pm_req_given_model_id(model_id,
-                                                         *requests)
-
-                        self._relay_to_runtime_data_given_model_id(
-                            model_id)
-                    elif np.array_equal(request, REQ_TYPE.SET):
-                        requests: ty.List[np.ndarray] = [request]
-                        # recv model_id
-                        model_id: int = \
-                            self.runtime_to_service_req.recv()[
-                                0].item()
-                        # recv var_id
-                        requests.append(
-                            self.runtime_to_service_req.recv())
-                        self._send_pm_req_given_model_id(model_id,
-                                                         *requests)
-
-                        self._relay_to_pm_data_given_model_id(
-                            model_id)
-                    else:
-                        raise RuntimeError(
-                            f"Unknown request {request}")
-
-                if self.runtime_to_service_cmd.probe():
-                    return
-
 
 class LoihiCRuntimeService(AbstractRuntimeService):
     """RuntimeService that implements Loihi SyncProtocol in C."""
     pass
 
 
-class AsyncPyRuntimeService(PyRuntimeService):
+class AsyncPyRuntimeService(LoihiPyRuntimeService):
     """RuntimeService that implements Async SyncProtocol in Py."""
 
     def _send_pm_cmd(self, cmd: MGMT_COMMAND):
@@ -301,22 +301,28 @@ class AsyncPyRuntimeService(PyRuntimeService):
 
         return rcv_msgs
 
+    # FixMe: (AW) This is not thought through. What if an AyncProcModel
+    #  has already terminated before the STOP command is send?
     def run(self):
         while True:
-            command = self.runtime_to_service_cmd.recv()
-            if np.array_equal(command, MGMT_COMMAND.STOP):
-                self._send_pm_cmd(command)
-                rsps = self._get_pm_resp()
-                for rsp in rsps:
-                    if not np.array_equal(rsp, MGMT_RESPONSE.TERMINATED):
-                        raise ValueError(f"Wrong Response Received : {rsp}")
-                self.service_to_runtime_ack.send(MGMT_RESPONSE.TERMINATED)
-                self.join()
-                return
-            else:
-                self._send_pm_cmd(MGMT_COMMAND.RUN)
-                rsps = self._get_pm_resp()
-                for rsp in rsps:
-                    if not np.array_equal(rsp, MGMT_RESPONSE.DONE):
-                        raise ValueError(f"Wrong Response Received : {rsp}")
-                self.service_to_runtime_ack.send(MGMT_RESPONSE.DONE)
+            if self.runtime_to_service_cmd.probe():
+                command = self.runtime_to_service_cmd.recv()
+                if np.array_equal(command, MGMT_COMMAND.STOP):
+                    self._send_pm_cmd(command)
+                    rsps = self._get_pm_resp()
+                    for rsp in rsps:
+                        if not np.array_equal(rsp, MGMT_RESPONSE.TERMINATED):
+                            raise ValueError(f"Wrong response received : {rsp}")
+                    self.service_to_runtime_ack.send(MGMT_RESPONSE.TERMINATED)
+                    self.join()
+                    break
+                elif np.array_equal(command, MGMT_COMMAND.PAUSE):
+                    # Inform all ProcessModels about the PAUSE command
+                    self._send_pm_cmd(command)
+                    rsps = self._get_pm_resp()
+                    for rsp in rsps:
+                        if not np.array_equal(rsp, MGMT_RESPONSE.PAUSED):
+                            raise ValueError(f"Wrong Response Received : {rsp}")
+                    # Inform the runtime about successful pausing
+                    self.service_to_runtime_ack.send(MGMT_RESPONSE.PAUSED)
+                    self._handle_get_set(0)

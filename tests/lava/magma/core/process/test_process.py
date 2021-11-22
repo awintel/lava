@@ -39,7 +39,7 @@ class TestCollection(unittest.TestCase):
 
         self.assertIsInstance(c, Collection)
         self.assertEqual(c.name, "TestCollection")
-        self.assertTrue(c.is_empty())
+        self.assertTrue(c.is_empty)
 
     def test_set_members(self):
         """Checks setting of collection members."""
@@ -133,12 +133,12 @@ class TestProcessSetup(unittest.TestCase):
         # A process has collections for InPorts, OutPorts, VarPors, RefPorts
         # and Vars which group these objects created during initialization but
         # they all start out empty
-        self.assertTrue(p.in_ports.is_empty())
-        self.assertTrue(p.out_ports.is_empty())
-        self.assertTrue(p.var_ports.is_empty())
-        self.assertTrue(p.ref_ports.is_empty())
-        self.assertTrue(p.vars.is_empty())
-        self.assertTrue(p.procs.is_empty())
+        self.assertTrue(p.in_ports.is_empty)
+        self.assertTrue(p.out_ports.is_empty)
+        self.assertTrue(p.var_ports.is_empty)
+        self.assertTrue(p.ref_ports.is_empty)
+        self.assertTrue(p.vars.is_empty)
+        self.assertTrue(p.procs.is_empty)
 
     def test_process_with_vars_and_ports(self):
         """Checks process with Vars and Ports can be constructed."""
@@ -176,7 +176,7 @@ class TestProcessSetup(unittest.TestCase):
         self.assertEqual(p.in_port1.process, p)
 
         # Process has no sub processes (yet)
-        self.assertTrue(p.procs.is_empty())
+        self.assertTrue(p.procs.is_empty)
 
         # Since 'v2' has been explicitly exposed for shared memory access,
         # 'var_port1' contains a reference to it
@@ -205,7 +205,7 @@ class TestProcessSetup(unittest.TestCase):
         sub_procs = [Proc(), Proc(), Proc()]
 
         # Before 'registration' the parent's 'procs' are emtpy
-        self.assertTrue(parent_proc.procs.is_empty())
+        self.assertTrue(parent_proc.procs.is_empty)
         # ... and the sub processes have no 'parent_proc'
         for p in sub_procs:
             self.assertIsNone(p.parent_proc)
@@ -214,7 +214,7 @@ class TestProcessSetup(unittest.TestCase):
         parent_proc.register_sub_procs({p.name: p for p in sub_procs})
 
         # After 'registration' the parent's 'procs' are no longer empty...
-        self.assertFalse(parent_proc.procs.is_empty())
+        self.assertFalse(parent_proc.procs.is_empty)
 
         # ... and the 'procs' collection contains the sub processes
         self.assertEqual(parent_proc.procs.members, sub_procs)

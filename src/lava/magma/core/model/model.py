@@ -51,6 +51,10 @@ class AbstractProcessModel(ABC):
     implements_protocol: ty.Optional[ty.Type[AbstractSyncProtocol]] = None
     required_resources: ty.List[ty.Type[AbstractResource]] = []
 
+    def __init__(self, model_id: int, name: str):
+        self.model_id = model_id
+        self.name = name
+
     def __repr__(self):
         pm_name = self.__class__.__qualname__
         p_name = self.implements_process.__qualname__
@@ -68,7 +72,7 @@ class AbstractProcessModel(ABC):
     # ToDo: (AW) Should AbstractProcessModel even have a run() method? What
     #  if a sub class like AbstractCProcessModel for a LMT does not even need
     #  a 'run'?
-    def run(self):
+    def _run(self):
         raise NotImplementedError("'run' method is not implemented.")
 
     # ToDo: What does this function do here? The AbstractProcModel can't
