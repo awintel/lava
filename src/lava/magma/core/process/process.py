@@ -383,8 +383,11 @@ class AbstractProcess(metaclass=ProcessPostInitCaller):
             ProcessModel for each compiled process.
         """
 
-        assert not self._runtime, \
-            "Resuming a paused Process is not yet supported."
+        # FixMe: (AW) Remove this hack when fixed
+        from lava.magma.core.run_conditions import RunContinuous
+        if isinstance(condition, RunContinuous) and self._runtime:
+            raise AssertionError("Resuming a paused Process is not yet "
+                                 "supported for RunContinuous.")
 
         if not self._runtime:
             executable = self.compile(run_cfg)

@@ -21,8 +21,8 @@ class TestSubProcModel(unittest.TestCase):
 
         # But we can instantiate a sub class
         class SubProcModel(AbstractSubProcessModel):
-            def __init__(self, _):
-                pass
+            def __init__(self, proc):
+                super().__init__(proc)
 
         pm = SubProcModel(Proc())
 
@@ -37,7 +37,8 @@ class TestSubProcModel(unittest.TestCase):
 
         # A minimal SubProcessModel
         class SubProcModel(AbstractSubProcessModel):
-            def __init__(self, _):
+            def __init__(self, proc):
+                super().__init__(proc)
                 self.proc1 = Proc()
                 self.proc2 = Proc()
 

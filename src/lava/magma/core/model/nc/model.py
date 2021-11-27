@@ -1,7 +1,9 @@
 # Copyright (C) 2021 Intel Corporation
-# SPDX-License-Identifier:  BSD-3-Clause
+# SPDX-License-Identifier: BSD-3-Clause
+# See: https://spdx.org/licenses/
 from abc import ABC, abstractmethod
 
+from lava.magma.core.process.process import AbstractProcess
 from lava.magma.core.model.model import AbstractProcessModel
 
 
@@ -32,9 +34,13 @@ class AbstractNcProcessModel(AbstractProcessModel, ABC):
     """Abstract interface for a NeuroCore ProcessModels."""
 
     @abstractmethod
-    def allocate(self, net: Net):
+    def allocate(self, proc: AbstractProcess, net: Net):
         """Allocates resources required by Process via Net provided by
         compiler.
         Note: This should work as before.
         """
         pass
+
+
+class LoihiNcProcessModel(AbstractNcProcessModel):
+    pass

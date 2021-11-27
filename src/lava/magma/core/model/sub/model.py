@@ -49,8 +49,8 @@ class AbstractSubProcessModel(AbstractProcessModel):
     """
 
     @abstractmethod
-    def __init__(self, _: AbstractProcess):
-        raise NotImplementedError
+    def __init__(self, proc: AbstractProcess):
+        super().__init__(proc.id, proc.name)
 
     def find_sub_procs(self) -> ty.Dict[str, AbstractProcess]:
         """Finds and returns all sub processes of ProcessModel."""

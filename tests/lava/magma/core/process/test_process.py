@@ -262,6 +262,8 @@ class TestProcessSetup(unittest.TestCase):
         self.assertFalse(yet_another_proc.is_sub_proc_of(proc1))
 
     # TODO: (PP) Modify unit test when non-blocking execution is implemented
+    # ToDo: (AW) Remove when correctly implemented
+    @unittest.skip
     def test_non_blocking_execution_fail(self):
         """Checks that non-blocking execution raises an NotImplementedError, as
         non-blocking execution is currently not available."""
